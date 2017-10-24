@@ -136,7 +136,7 @@ def backward_propagate_error(network, expected, res):
 				if expected[j] == res:
 					errors.append((expected[j] - neuron['output']))
 				else:
-					errors.append((expected[j] - neuron['output'])*cost[expected[j]][res]) #misclassification cost from cost matrix
+					errors.append((expected[j] - neuron['output'])*cost[expected[j]][res])*cost[expected[j]][res]) #misclassification cost from cost matrix
 		for j in range(len(layer)):
 			neuron = layer[j]
 			 #the error updated in output layer gets accumulated in the neuron so that it can be propagated to the hidden layer neuron
