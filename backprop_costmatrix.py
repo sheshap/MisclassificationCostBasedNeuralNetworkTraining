@@ -2,7 +2,6 @@
 # Original Source of this code was from the link https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/
 # The updated code is used as part of a homework assignment.
 # Course : CIS 731 Artificial Neural Networks
-
 # Backprop on the Seeds Dataset
 from random import seed
 from random import randrange
@@ -23,12 +22,10 @@ def load_csv(filename):
 				continue
 			dataset.append(row)
 	return dataset
-
 # Convert string column to float
 def str_column_to_float(dataset, column):
 	for row in dataset:
 		row[column] = float(row[column].strip())
-
 # Convert string column to integer
 def str_column_to_int(dataset, column):
 	class_values = [row[column] for row in dataset]
@@ -39,19 +36,16 @@ def str_column_to_int(dataset, column):
 	for row in dataset:
 		row[column] = lookup[row[column]]
 	return lookup
-
 # Find the min and max values for each column
 def dataset_minmax(dataset):
 	minmax = list()
 	stats = [[min(column), max(column)] for column in zip(*dataset)]
 	return stats
-
 # Rescale dataset columns to the range 0-1
 def normalize_dataset(dataset, minmax):
 	for row in dataset:
 		for i in range(len(row)-1):
 			row[i] = (row[i] - minmax[i][0]) / (minmax[i][1] - minmax[i][0])
-
 # Split a dataset into k folds
 def cross_validation_split(dataset, n_folds):
 	dataset_split = list()
@@ -64,18 +58,15 @@ def cross_validation_split(dataset, n_folds):
 			fold.append(dataset_copy.pop(index))
 		dataset_split.append(fold)
 	return dataset_split
-
 # Calculate accuracy percentage
 def accuracy_metric(actual, predicted):
 	correct = 0
-	#print(len(actual),len(predicted))
 	for i in range(len(actual)):
 		if actual[i] == predicted[i]:
 			correct += 1
 		else:
 			global actual_misclassification_count
 			actual_misclassification_count = actual_misclassification_count + 1
-	#print(actual_misclassification_count)
 	return correct / float(len(actual)) * 100.0
 
 # Evaluate an algorithm using a cross validation split
@@ -96,8 +87,6 @@ def evaluate_algorithm(dataset, algorithm, n_folds, *args):
 		actual = [row[-1] for row in fold]
 		accuracy = accuracy_metric(actual, predicted)
 		scores.append(accuracy)
-		#print(misclassification_count)
-		#print(actual_misclassification_count)
 	return scores
 
 # Calculate neuron activation for an input
@@ -106,12 +95,9 @@ def activate(weights, inputs):
 	for i in range(len(weights)-1):
 		activation += weights[i] * inputs[i]
 	return activation
-
 # Transfer neuron activation
 def transfer(activation):
-	#print(activation)
 	return 1.0 / (1.0 + exp(-activation))
-
 # Forward propagate input to a network output
 def forward_propagate(network, row):
 	inputs = row
@@ -123,24 +109,20 @@ def forward_propagate(network, row):
 			new_inputs.append(neuron['output'])
 		inputs = new_inputs
 	return inputs
-
 # Calculate the derivative of an neuron output
 def transfer_derivative(output):
 	return output * (1.0 - output)
-
 # Backpropagate error and store in neurons
 def backward_propagate_error(network, expected, res):
 	count_error=0
 	for i in reversed(range(len(network))):
 		layer = network[i]
-		#print(i)
 		errors = list()
 		if i != len(network)-1:
 			for j in range(len(layer)):
 				error = 0.0
 				for neuron in network[i + 1]:
-					#seconddim = ((-1)*int(math.log(neuron['output'])))
-					error += (neuron['weights'][j] * neuron['delta']) #* cost[expected]
+					error += (neuron['weights'][j] * neuron['delta'])
 				errors.append(error)
 		else:
 			for j in range(len(layer)):
@@ -149,15 +131,12 @@ def backward_propagate_error(network, expected, res):
 					errors.append((expected[j] - neuron['output']))
 				else:
 					global cost_matrix
-					#print(expected[j],res,cost_matrix)
 					cost_matrix[expected[j]][res] = cost_matrix[expected[j]][res] + 1
 					global misclassification_cost
 					misclassification_cost = misclassification_cost + (cost[expected[j]][res]*cost[expected[j]][res])
 					global misclassification_count
 					misclassification_count = misclassification_count + 1
 					errors.append((expected[j] - neuron['output'])*cost[expected[j]][res]*cost[expected[j]][res])
-				#print(expected[j],seconddim,cost[expected[j]][seconddim])
-				#writer.writerow([j+1,expected[j],neuron['output']])
 		for j in range(len(layer)):
 			neuron = layer[j]
 			 #print(cost[expected[j]][neuron['output']])   ,((-1)*int(math.log(neuron['output'])))
