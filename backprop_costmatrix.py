@@ -3,15 +3,17 @@
 # The updated code is used as part of a homework assignment.
 # Course : CIS 731 Artificial Neural Networks
 
+# Backprop on the Seeds Dataset
 from random import seed
 from random import randrange
 from random import random
 from csv import reader
 import csv
 import math
+import numpy as np
 from math import exp
 
-# Load a CSV file in read mode
+# Load a CSV file
 def load_csv(filename):
 	dataset = list()
 	with open(filename, 'r') as file:
@@ -66,12 +68,17 @@ def cross_validation_split(dataset, n_folds):
 # Calculate accuracy percentage
 def accuracy_metric(actual, predicted):
 	correct = 0
+	#print(len(actual),len(predicted))
 	for i in range(len(actual)):
 		if actual[i] == predicted[i]:
 			correct += 1
+		else:
+			global actual_misclassification_count
+			actual_misclassification_count = actual_misclassification_count + 1
+	#print(actual_misclassification_count)
 	return correct / float(len(actual)) * 100.0
 
-# Evaluate back_propagation algorithm using a cross validation split
+# Evaluate an algorithm using a cross validation split
 def evaluate_algorithm(dataset, algorithm, n_folds, *args):
 	folds = cross_validation_split(dataset, n_folds)
 	scores = list()
@@ -84,22 +91,25 @@ def evaluate_algorithm(dataset, algorithm, n_folds, *args):
 			row_copy = list(row)
 			test_set.append(row_copy)
 			row_copy[-1] = None
-		#predict using backpropagation
+		actual = [row[-1] for row in fold]
 		predicted = algorithm(train_set, test_set, *args)
 		actual = [row[-1] for row in fold]
 		accuracy = accuracy_metric(actual, predicted)
 		scores.append(accuracy)
+		#print(misclassification_count)
+		#print(actual_misclassification_count)
 	return scores
 
-# Calculate neuron activation for an input as product of input and weights
+# Calculate neuron activation for an input
 def activate(weights, inputs):
 	activation = weights[-1]
 	for i in range(len(weights)-1):
 		activation += weights[i] * inputs[i]
 	return activation
 
-# Transfer neuron activation using sigmoid function
+# Transfer neuron activation
 def transfer(activation):
+	#print(activation)
 	return 1.0 / (1.0 + exp(-activation))
 
 # Forward propagate input to a network output
@@ -114,7 +124,7 @@ def forward_propagate(network, row):
 		inputs = new_inputs
 	return inputs
 
-# Calculate the derivative of a neuron output
+# Calculate the derivative of an neuron output
 def transfer_derivative(output):
 	return output * (1.0 - output)
 
@@ -123,26 +133,37 @@ def backward_propagate_error(network, expected, res):
 	count_error=0
 	for i in reversed(range(len(network))):
 		layer = network[i]
+		#print(i)
 		errors = list()
-		if i != len(network)-1: #for hidden layers sum of neuron weights*neuron delta
+		if i != len(network)-1:
 			for j in range(len(layer)):
 				error = 0.0
 				for neuron in network[i + 1]:
-					error += (neuron['weights'][j] * neuron['delta']) 
+					#seconddim = ((-1)*int(math.log(neuron['output'])))
+					error += (neuron['weights'][j] * neuron['delta']) #* cost[expected]
 				errors.append(error)
 		else:
-			for j in range(len(layer)):  #this part of the code checks for the final output and updates error based on misclassification cost matrix
+			for j in range(len(layer)):
 				neuron = layer[j]
 				if expected[j] == res:
 					errors.append((expected[j] - neuron['output']))
 				else:
-					errors.append((expected[j] - neuron['output'])*cost[expected[j]][res])*cost[expected[j]][res]) #misclassification cost from cost matrix
+					global cost_matrix
+					#print(expected[j],res,cost_matrix)
+					cost_matrix[expected[j]][res] = cost_matrix[expected[j]][res] + 1
+					global misclassification_cost
+					misclassification_cost = misclassification_cost + (cost[expected[j]][res]*cost[expected[j]][res])
+					global misclassification_count
+					misclassification_count = misclassification_count + 1
+					errors.append((expected[j] - neuron['output'])*cost[expected[j]][res]*cost[expected[j]][res])
+				#print(expected[j],seconddim,cost[expected[j]][seconddim])
+				#writer.writerow([j+1,expected[j],neuron['output']])
 		for j in range(len(layer)):
 			neuron = layer[j]
-			 #the error updated in output layer gets accumulated in the neuron so that it can be propagated to the hidden layer neuron
+			 #print(cost[expected[j]][neuron['output']])   ,((-1)*int(math.log(neuron['output'])))
 			neuron['delta'] = errors[j] * transfer_derivative(neuron['output'])
 		count_error += sum(errors)
-	#error generated due to misclassification combined with misclassification cost is written to file
+	#print(count_error)
 	writer.writerow([count_error])
 			
 #writer.writerow(['Error'])
@@ -161,6 +182,7 @@ def update_weights(network, row, l_rate,expected):
 
 # Train a network for a fixed number of epochs
 def train_network(network, train, l_rate, n_epoch, n_outputs):
+	#print(misclassification_count)
 	for epoch in range(n_epoch):
 		for row in train:
 			outputs = forward_propagate(network, row)
@@ -190,9 +212,9 @@ def predict(network, row):
 def back_propagation(train, test, l_rate, n_epoch, n_hidden):
 	n_inputs = len(train[0]) - 1
 	n_outputs = len(set([row[-1] for row in train]))
-	#print(n_outputs)
+	#print(len(train))
 	network = initialize_network(n_inputs, n_hidden, n_outputs)
-	#print(range(len(network)))
+	#print(len(test))
 	train_network(network, train, l_rate, n_epoch, n_outputs)
 	predictions = list()
 	for row in test:
@@ -202,17 +224,19 @@ def back_propagation(train, test, l_rate, n_epoch, n_hidden):
 	#print(predictions)
 	return(predictions)
 
-# Test Backprop on a dataset
+# Test Backprop on Seeds dataset
 seed(1)
 # load and prepare data
-filename = 'activity_data.csv'
-error_filename = 'activity_error.csv'
+#filename = 'cardio_nsp.csv'
+#filename = 'pages-blocks.csv'
+error_filename = 'error_ep1_activity_FSsqcost.csv'
+filename = 'featureSelected_activitydata.csv'
+#error_filename = 'error_ep1_activity_FSsqcost.csv'
 oFile = open(error_filename, "w")
 writer = csv.writer(oFile, delimiter=',', dialect='excel', lineterminator='\n')
-#below is the cost matrix for cardiotocography dataset
-#cost = ((0, 1, 2), (4, 0, 4), (8, 6, 0))
-#misclassification cost matrix for human activity recognise
-cost = ((0,1,1,4,3,5), (1,0,3,7,6,9), (1,3,0,6,7,8),(4,7,6,0,2,1),(2,7,7,2,0,3),(5,7,7,3,5,0))
+#cost = ((0, 1, 2), (4, 0, 4), (8, 6, 0)) # misclassification cost matrix for cardio
+#cost = ((0,2,5,6,18),(1,0,3,2,6),(1,3,0,1,4),(1,4,2,0,3),(1,1,2,2,0)) # misclassification cost matrix for page blocks
+cost = ((0,1,1,3,2,3),(1,0,2,2,3,4),(1,2,0,2,3,4),(2,3,3,0,1,1),(1,2,2,1,0,2),(4,5,5,1,2,0)) # misclassification cost matrix for HAR
 dataset = load_csv(filename)
 for i in range(len(dataset[0])-1):
 	str_column_to_float(dataset, i)
@@ -222,11 +246,21 @@ str_column_to_int(dataset, len(dataset[0])-1)
 minmax = dataset_minmax(dataset)
 normalize_dataset(dataset, minmax)
 # evaluate algorithm
-n_folds = 2	#how many parts in which the given data is given divided
-l_rate = 0.1 #learning rate
-n_epoch = 1 #number of times the data used for training
-n_hidden = 10 #number of neurons on a single hidden layer of the neural network
+misclassification_count = 0
+misclassification_cost = 0
+actual_misclassification_count = 0
+n_folds = 2
+l_rate = 0.1
+n_epoch = 10
+n_hidden = 10
+#cost_matrix = [[0,0,0],[0,0,0],[0,0,0]] # cost matrix for cardio
+#cost_matrix = [[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]] # cost matrix for page blocks
+cost_matrix = [[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0]] # cost matrix for HAR
 scores = evaluate_algorithm(dataset, back_propagation, n_folds, l_rate, n_epoch, n_hidden)
 #print('Scores: %s' % scores)
 print('Mean Accuracy: %.3f%%' % (sum(scores)/float(len(scores))))
+print("This is overall cost (square of cost) during training "+ str(misclassification_cost))
+print("this is misclassification count during training. Includes all folds(=2) and iterations "+str(misclassification_count))
+print("this is misclassification during test "+str(actual_misclassification_count))
+print(cost_matrix)
 oFile.close()
